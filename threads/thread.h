@@ -146,5 +146,7 @@ bool list_less_time(const struct list_elem *first,const struct list_elem * secon
 void new_sleep(int64_t ticks,int64_t start);
 void threads_wakeup(int64_t curr);
 void new_wakeup(struct thread *t);
+bool list_priority_sort(const struct list_elem *first,const struct list_elem * second,void *aux);
+void my_yield(void);
 
 #endif /* threads/thread.h */

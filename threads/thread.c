@@ -207,6 +207,9 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  //Added By- Sukrutha
+  my_yield();
+
   return tid;
 }
 
@@ -243,8 +246,13 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  //list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
+ 
+  //Added By-Sukrutha 
+  //list_sort(&ready_list,list_priority_sort,NULL);
+  list_insert_ordered(&ready_list,&t->elem,*list_priority_sort,NULL);
+
   intr_set_level (old_level);
 }
 
@@ -313,8 +321,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  if (cur != idle_thread) {
+    //list_push_back (&ready_list, &cur->elem);
+    //list_sort(&ready_list,list_priority_sort,NULL);
+    list_insert_ordered(&ready_list,&cur->elem,*list_priority_sort,NULL);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -341,10 +352,23 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-    //Added By-Sukrutha - Changing Priority
-
-
     thread_current ()->priority = new_priority;
+    //
+    enum intr_level old_level;
+    old_level = intr_disable ();
+    //Added By-Sukrutha - Changing Priority
+    /*
+    ->After setting new priority,sort the ready_list
+    ->Pick the thread with high priority( list_front )
+    ->If the current thread has less priority than list_front,reschcedule
+    */
+    list_sort(&ready_list,list_priority_sort,NULL);
+    //list_insert_ordered(&ready_list,&t->elem,*list_priority_sort,NULL);
+    struct list_elem *f;
+    my_yield();
+    //
+    intr_set_level (old_level);
+    /*Code Ends*/
 }
 
 /* Returns the current thread's priority. */
@@ -512,8 +536,6 @@ next_thread_to_run (void)
     return idle_thread;
   else
     return list_entry (list_pop_front (&ready_list), struct thread, elem);
-  //Added By-Sukrutha - Next thread Based on priority
-   
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -719,6 +741,33 @@ void threads_wakeup(int64_t curr)
 
   intr_set_level (old_level);
 }
+
+/*Added By-Sukrutha*/
+
+//Comparator function
+bool list_priority_sort(const struct list_elem *first,const struct list_elem * second,void *aux)
+{
+    struct thread *f=list_entry(first,struct thread ,elem);
+    struct thread *s=list_entry(second,struct thread ,elem);
+    return f->priority > s->priority;
+}
+
+void my_yield(void)
+{
+    
+      struct list_elem *f;
+      if(!list_empty(&ready_list))
+      {
+          f=list_front(&ready_list);
+          struct thread * prio = list_entry (f, struct thread, elem);
+          struct thread * curr = thread_current();
+          if( prio->priority > curr->priority && is_thread(prio))
+          {
+              thread_yield();
+          }
+      }
+}
+
 
 /*My code End*/
 
